@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thế giới điện thoại</title>
+  <link rel="shortcut icon" href="img/favicon.ico" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.22.9/babel.min.js"></script>
+  <style>
+    .swiper-slide img { width: 100%; height: 400px; object-fit: cover; }
+    .product-card { transition: transform 0.3s, box-shadow 0.3s; }
+    .product-card:hover { transform: translateY(-5px); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
+    .dropdown:hover .dropdown-content { display: block; }
+    .cart-badge {
+      position: absolute; top: -10px; right: -10px;
+      background: red; color: white; border-radius: 50%;
+      padding: 2px 6px; font-size: 12px;
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const Header = ({ cartCount, user }) => (
+      <header className="bg-blue-600 text-white p-4 shadow-md sticky top-0 z-10">
+        <div className="container mx-auto flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Thế giới điện thoại</h1>
+          <nav className="flex items-center space-x-4">
+            <a href="index.html" className="hover:underline">Trang chủ</a>
+            <a href="gioithieu.html" className="hover:underline">Giới thiệu</a>
+            <a href="giohang.html" className="relative hover:underline">
+              Giỏ hàng {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+            </a>
+            <a href="lienhe.html" className="hover:underline">Liên hệ</a>
+            <a href="tintuc.html" className="hover:underline">Tin tức</a>
+            {user ? (
+              <div className="relative dropdown">
+                <button className="hover:underline">{user.username}</button>
+                <div className="dropdown-content hidden absolute bg-white text-black shadow-lg rounded mt-2 z-10">
+                  <a href="nguoidung.html" className="block px-4 py-2 hover:bg-gray-100">Tài khoản</a>
+                  {user.isAdmin && <a href="admin.html" className="block px-4 py-2 hover:bg-gray-100">Quản trị</a>}
+                  <button className="block w-full text-left px-4 py-2 hover:bg-gray-100" onClick={() => {
+                    localStorage.removeItem('currentUser'); window.location.reload();
+                  }}>Đăng xuất</button>
+                </div>
+              </div>
+            ) : (
+              <a href="login.html" className="hover:underline">Đăng nhập</a>
+            )}
+          </nav>
+        </div>
+      </header>
+    );
+
+    const Banner = () => (
+      <div className="swiper mySwiper">
+        <div className="swiper-wrapper">
+          <div className="swiper-slide"><img src="img/banners/banner1.jpg" alt="Banner 1" /></div>
+          <div className="swiper-slide"><img src="img/banners/blackFriday.gif" alt="Black Friday" /></div>
+        </div>
+        <div className="swiper-pagination"></div>
+        <div className="swiper-button-next"></div>
+        <div className="swiper-button-prev"></div>
+      </div>
+    );
+
+    const Filter = ({ type, options, onSelect, selected }) => (
+      <div className="relative dropdown">
+        <button className="bg-white text-gray-700 font-semibold py-2 px-4 rounded shadow hover:bg-gray-100">{type}</button>
+        <div className="dropdown-content hidden absolute bg-white shadow-lg rounded mt-2 z-10">
+          {options.map(option => (
+            <button
+              key={option.value}
+              className={`block w-full text-left px-4 py-2 hover:bg-gray-100 ${selected === option.value ? 'bg-blue-100' : ''}`}
+              onClick={() => onSelect(option.value)}
+            >{option.label}</button>
+          ))}
+        </div>
+      </div>
+    );
+
+    const ProductCard = ({ product, onAddToCart }) => (
+      <div className="product-card bg-white rounded-lg shadow-md p-4 w-60">
+        <a href={`chitietsanpham.html?masp=${product.masp}`}>
+          <img src={product.img} alt={product.name} className="w-full h-40 object-cover rounded mb-2" loading="lazy" />
+        </a>
+        <h3 className="text-lg font-semibold">{product.name}</h3>
+        <p className="text-red-500 font-bold">{parseInt(product.price).toLocaleString('vi')} VNĐ</p>
+        <div className="flex items-center">
+          {[...Array(5)].map((_, i) => (
+            <i key={i} className={`fa fa-star ${i < product.star ? 'text-yellow-400' : 'text-gray-300'}`}></i>
+          ))}
+          <span className="ml-2 text-gray-500">({product.rateCount})</span>
+        </div>
+        {product.promo.name && (
+          <p className="text-green-500">
+            {product.promo.name === 'giamgia' ? `Giảm ${parseInt(product.promo.value).toLocaleString('vi')} VNĐ` : product.promo.value}
+          </p>
+        )}
+        <button
+          className="mt-2 bg-blue-500 text-white py-1 px-3 rounded hover:bg-blue-600"
+          onClick={() => onAddToCart(product)}
+        >Thêm vào giỏ hàng</button>
+      </div>
+    );
+
+    const App = () => {
+      const [products, setProducts] = useState(JSON.parse(localStorage.getItem('products')) || []);
+      const [cart, setCart] = useState(JSON.parse(localStorage.getItem('cart')) || []);
+      const [user, setUser] = useState(JSON.parse(localStorage.getItem('currentUser')) || null);
+      const [filters, setFilters] = useState({ price: '', promo: '', star: '', sort: '' });
+      const [search, setSearch] = useState('');
+      const [page, setPage] = useState(1);
+      const itemsPerPage = 8;
+
+      useEffect(() => {
+        localStorage.setItem('cart', JSON.stringify(cart));
+      }, [cart]);
+
+      const priceOptions = [
+        { label: 'Tất cả', value: '' },
+        { label: 'Dưới 5 triệu', value: '0-5000000' },
+        { label: '5 - 10 triệu', value: '5000000-10000000' },
+        { label: 'Trên 10 triệu', value: '10000000-' }
+      ];
+      const promoOptions = [
+        { label: 'Tất cả', value: '' },
+        { label: 'Trả góp', value: 'tragop' },
+        { label: 'Giảm giá', value: 'giamgia' },
+        { label: 'Giá rẻ online', value: 'giareonline' },
+        { label: 'Mới ra mắt', value: 'moiramat' }
+      ];
+      const starOptions = [
+        { label: 'Tất cả', value: '' },
+        { label: '4 sao trở lên', value: '4' },
+        { label: '3 sao trở lên', value: '3' }
+      ];
+      const sortOptions = [
+        { label: 'Mặc định', value: '' },
+        { label: 'Giá tăng dần', value: 'price-asc' },
+        { label: 'Giá giảm dần', value: 'price-desc' },
+        { label: 'Sao cao nhất', value: 'star-desc' }
+      ];
+
+      const applyFilters = () => {
+        let filtered = [...(JSON.parse(localStorage.getItem('products')) || [])];
+        if (search) {
+          filtered = filtered.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+        }
+        if (filters.price) {
+          const [min, max] = filters.price.split('-').map(Number);
+          filtered = filtered.filter(p => {
+            const price = parseInt(p.price);
+            return (!min || price >= min) && (!max || price <= max);
+          });
+        }
+        if (filters.promo) {
+          filtered = filtered.filter(p => p.promo.name === filters.promo);
+        }
+        if (filters.star) {
+          filtered = filtered.filter(p => p.star >= Number(filters.star));
+        }
+        if (filters.sort) {
+          filtered.sort((a, b) => {
+            if (filters.sort === 'price-asc') return parseInt(a.price) - parseInt(b.price);
+            if (filters.sort === 'price-desc') return parseInt(b.price) - parseInt(a.price);
+            if (filters.sort === 'star-desc') return b.star - a.star;
+            return 0;
+          });
+        }
+        setProducts(filtered);
+      };
+
+      useEffect(() => {
+        applyFilters();
+      }, [filters, search]);
+
+      const addToCart = (product) => {
+        const existing = cart.find(item => item.masp === product.masp);
+        if (existing) {
+          setCart(cart.map(item =>
+            item.masp === product.masp ? { ...item, quantity: item.quantity + 1 } : item
+          ));
+        } else {
+          setCart([...cart, { ...product, quantity: 1 }]);
+        }
+        alert(`Đã thêm ${product.name} vào giỏ hàng!`);
+      };
+
+      const totalPages = Math.ceil(products.length / itemsPerPage);
+      const paginatedProducts = products.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+      useEffect(() => {
+        new Swiper('.mySwiper', {
+          loop: true,
+          pagination: { el: '.swiper-pagination' },
+          navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' },
+          autoplay: { delay: 5000 }
+        });
+        new Swiper('.hotProductsSwiper', {
+          slidesPerView: 4,
+          spaceBetween: 20,
+          pagination: { el: '.swiper-pagination' },
+          breakpoints: {
+            640: { slidesPerView: 1 },
+            768: { slidesPerView: 2 },
+            1024: { slidesPerView: 3 }
+          }
+        });
+      }, []);
+
+      return (
+        <div>
+          <Header cartCount={cart.length} user={user} />
+          <section className="container mx-auto py-8">
+            <Banner />
+            <div className="my-4">
+              <img src="img/banners/blackFriday.gif" alt="Black Friday" className="w-full" />
+            </div>
+            <div className="flex space-x-4 my-4">
+              <Filter type="Giá tiền" options={priceOptions} onSelect={value => setFilters({ ...filters, price: value })} selected={filters.price} />
+              <Filter type="Khuyến mãi" options={promoOptions} onSelect={value => setFilters({ ...filters, promo: value })} selected={filters.promo} />
+              <Filter type="Số sao" options={starOptions} onSelect={value => setFilters({ ...filters, star: value })} selected={filters.star} />
+              <Filter type="Sắp xếp" options={sortOptions} onSelect={value => setFilters({ ...filters, sort: value })} selected={filters.sort} />
+            </div>
+            <div className="flex items-center space-x-2 my-4">
+              {(filters.price || filters.promo || filters.star || filters.sort) && (
+                <button
+                  className="text-red-500 hover:underline"
+                  onClick={() => setFilters({ price: '', promo: '', star: '', sort: '' })}
+                >Xóa bộ lọc</button>
+              )}
+              <input
+                type="text"
+                placeholder="Lọc theo tên..."
+                className="border rounded p-2 w-64"
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="contain-products">
+              {paginatedProducts.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  <i className="fa fa-times-circle text-4xl"></i>
+                  <p>Không có sản phẩm nào</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {paginatedProducts.map(product => (
+                    <ProductCard key={product.masp} product={product} onAddToCart={addToCart} />
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-center space-x-2 my-4">
+              {Array.from({ length: totalPages }, (_, i) => (
+                <button
+                  key={i + 1}
+                  className={`px-3 py-1 rounded ${page === i + 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+                  onClick={() => setPage(i + 1)}
+                >{i + 1}</button>
+              ))}
+            </div>
+            <div className="contain-khungSanPham mt-8">
+              <h2 className="text-2xl font-bold mb-4">Sản phẩm nổi bật</h2>
+              <div className="swiper hotProductsSwiper">
+                <div className="swiper-wrapper">
+                  {products.filter(p => p.star >= 4).map(product => (
+                    <div key={product.masp} className="swiper-slide">
+                      <ProductCard product={product} onAddToCart={addToCart} />
+                    </div>
+                  ))}
+                </div>
+                <div className="swiper-pagination"></div>
+              </div>
+            </div>
+          </section>
+          <footer className="bg-gray-800 text-white py-8">
+            <div className="container mx-auto text-center">
+              <p>© 2025 Thế giới điện thoại. All rights reserved.</p>
+              <p>Liên hệ: contact@smartphonestore.vn | Hotline: 0123 456 789</p>
+              <p><a href="trungtambaohanh.html" className="hover:underline">Trung tâm bảo hành</a> | <a href="tuyendung.html" className="hover:underline">Tuyển dụng</a></p>
+            </div>
+          </footer>
+          <button
+            className="fixed bottom-4 right-4 bg-blue-500 text-white p-3 rounded-full shadow-lg"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          ><i className="fa fa-arrow-up"></i></button>
+        </div>
+      );
+    };
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+</body>
+</html>
